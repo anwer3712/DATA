@@ -3,9 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>八字排盤（修復版）</title>
-    <!-- 依然使用您指定的 lunar-typescript，但避免 CDN 掛掉，可下載後放同目錄 -->
-    <script src="https://unpkg.com/lunar-typescript@1.6.11/dist/lunar.min.js"></script>
+    <title>八字排盤（獨立版）</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -116,126 +114,233 @@
 </div>
 
 <script>
-    // ---------- 顯示錯誤 ----------
-    function showError(msg) {
-        document.getElementById('errorMsg').innerText = msg;
-        document.getElementById('result').style.display = 'none';
+// ===================== 八字核心演算（純 JavaScript） =====================
+const GAN = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+const ZHI = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+
+// 小時對應地支索引（0-23 對應 ZHI 索引）
+const HOUR_TO_ZHI = [0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,0];
+
+// 五虎遁口訣：年干對應寅月天干起點（甲己年丙寅，乙庚年戊寅...）
+const YEAR_TG_TO_YIN_TG = [2,4,6,8,0,2,4,6,8,0]; // 年干0-9對應寅月天干索引
+
+// 五鼠遁口訣：日干對應子時天干起點（甲己還加甲，乙庚丙作初...）
+const DAY_TG_TO_ZI_TG = [0,2,4,6,8,0,2,4,6,8];   // 日干0-9對應子時天干索引
+
+// ---------- 節氣日期表（用於年柱／月柱精確劃分）----------
+// 收錄 2020~2030 年節氣（立春、驚蟄、清明...小寒）公曆日期
+const JIEQI_DATA = {
+    2020: { lichun:[2,4], jingzhe:[3,5], qingming:[4,4], lixia:[5,5], mangzhong:[6,5], xiaoshu:[7,6], liqiu:[8,7], bailu:[9,7], hanlu:[10,8], lidong:[11,7], daxue:[12,7], xiaohan:[1,6] },
+    2021: { lichun:[2,3], jingzhe:[3,5], qingming:[4,4], lixia:[5,5], mangzhong:[6,5], xiaoshu:[7,7], liqiu:[8,7], bailu:[9,7], hanlu:[10,8], lidong:[11,7], daxue:[12,7], xiaohan:[1,5] },
+    2022: { lichun:[2,4], jingzhe:[3,5], qingming:[4,5], lixia:[5,5], mangzhong:[6,6], xiaoshu:[7,7], liqiu:[8,7], bailu:[9,7], hanlu:[10,8], lidong:[11,7], daxue:[12,7], xiaohan:[1,5] },
+    2023: { lichun:[2,4], jingzhe:[3,6], qingming:[4,5], lixia:[5,6], mangzhong:[6,6], xiaoshu:[7,7], liqiu:[8,8], bailu:[9,8], hanlu:[10,8], lidong:[11,8], daxue:[12,7], xiaohan:[1,6] },
+    2024: { lichun:[2,4], jingzhe:[3,5], qingming:[4,4], lixia:[5,5], mangzhong:[6,5], xiaoshu:[7,6], liqiu:[8,7], bailu:[9,7], hanlu:[10,8], lidong:[11,7], daxue:[12,6], xiaohan:[1,5] },
+    2025: { lichun:[2,3], jingzhe:[3,5], qingming:[4,4], lixia:[5,5], mangzhong:[6,5], xiaoshu:[7,7], liqiu:[8,7], bailu:[9,7], hanlu:[10,8], lidong:[11,7], daxue:[12,7], xiaohan:[1,5] },
+    2026: { lichun:[2,4], jingzhe:[3,5], qingming:[4,5], lixia:[5,5], mangzhong:[6,5], xiaoshu:[7,7], liqiu:[8,7], bailu:[9,7], hanlu:[10,8], lidong:[11,7], daxue:[12,7], xiaohan:[1,5] },
+    2027: { lichun:[2,4], jingzhe:[3,6], qingming:[4,5], lixia:[5,6], mangzhong:[6,6], xiaoshu:[7,7], liqiu:[8,8], bailu:[9,8], hanlu:[10,9], lidong:[11,8], daxue:[12,7], xiaohan:[1,6] },
+    2028: { lichun:[2,4], jingzhe:[3,5], qingming:[4,4], lixia:[5,5], mangzhong:[6,5], xiaoshu:[7,6], liqiu:[8,7], bailu:[9,7], hanlu:[10,8], lidong:[11,7], daxue:[12,6], xiaohan:[1,6] },
+    2029: { lichun:[2,3], jingzhe:[3,5], qingming:[4,4], lixia:[5,5], mangzhong:[6,5], xiaoshu:[7,7], liqiu:[8,7], bailu:[9,7], hanlu:[10,8], lidong:[11,7], daxue:[12,7], xiaohan:[1,5] },
+    2030: { lichun:[2,4], jingzhe:[3,5], qingming:[4,5], lixia:[5,5], mangzhong:[6,5], xiaoshu:[7,7], liqiu:[8,7], bailu:[9,7], hanlu:[10,8], lidong:[11,7], daxue:[12,7], xiaohan:[1,5] }
+};
+
+// 取得某年某節氣的日期（若無精確數據則用近似值）
+function getJieqiDate(year, jieqiName) {
+    if (JIEQI_DATA[year] && JIEQI_DATA[year][jieqiName]) {
+        return JIEQI_DATA[year][jieqiName];
     }
+    // 近似值：立春2/4，驚蟄3/6，清明4/5，立夏5/6，芒種6/6，小暑7/7，立秋8/7，白露9/8，寒露10/8，立冬11/7，大雪12/7，小寒1/6
+    const approx = {
+        lichun: [2,4], jingzhe: [3,6], qingming: [4,5], lixia: [5,6],
+        mangzhong: [6,6], xiaoshu: [7,7], liqiu: [8,7], bailu: [9,8],
+        hanlu: [10,8], lidong: [11,7], daxue: [12,7], xiaohan: [1,6]
+    };
+    return approx[jieqiName];
+}
 
-    // ---------- 主計算 ----------
-    function calculateBazi() {
-        // 清除舊訊息
-        document.getElementById('errorMsg').innerText = '';
-        document.getElementById('result').style.display = 'none';
+// 判斷西曆日期是否在該年某節氣之前
+function isBeforeJieqi(year, month, day, jieqiName) {
+    const [jMonth, jDay] = getJieqiDate(year, jieqiName);
+    if (month < jMonth) return true;
+    if (month > jMonth) return false;
+    return day < jDay;
+}
 
-        // 1. 檢查庫是否載入
-        if (typeof Solar === 'undefined' || typeof Lunar === 'undefined') {
-            showError('日曆庫載入失敗，請重新整理頁面。');
-            return;
+// ---------- 年柱（以立春為界）----------
+function getYearPillar(year, month, day) {
+    let cycYear = year;
+    if (isBeforeJieqi(year, month, day, 'lichun')) {
+        cycYear = year - 1;
+    }
+    const tg = ((cycYear - 4) % 10 + 10) % 10;
+    const dz = ((cycYear - 4) % 12 + 12) % 12;
+    return GAN[tg] + ZHI[dz];
+}
+
+// ---------- 月柱（以節氣為界）----------
+function getMonthPillar(year, month, day) {
+    // 找到該日所屬的節氣月（寅月=立春~驚蟄前，卯月=驚蟄~清明前...）
+    const jieqiNames = ['lichun','jingzhe','qingming','lixia','mangzhong','xiaoshu','liqiu','bailu','hanlu','lidong','daxue','xiaohan'];
+    let monthIndex = -1;
+    // 先檢查是否在小寒之後到下一年立春前（丑月）
+    const [xiaohanM, xiaohanD] = getJieqiDate(year, 'xiaohan');
+    if (month > xiaohanM || (month === xiaohanM && day >= xiaohanD)) {
+        // 進一步判斷是否在立春前
+        const [lichunM, lichunD] = getJieqiDate(year, 'lichun');
+        if (month < lichunM || (month === lichunM && day < lichunD)) {
+            monthIndex = 11; // 丑月
         }
-
-        // 2. 讀取輸入
-        const yearInput = document.getElementById('year').value.trim();
-        const monthInput = document.getElementById('month').value.trim();
-        const dayInput = document.getElementById('day').value.trim();
-        const hourSelect = document.getElementById('hourSelect');
-        const hourVal = parseInt(hourSelect.value);
-
-        if (yearInput === '' || monthInput === '' || dayInput === '') {
-            showError('請完整填寫年月日。');
-            return;
-        }
-
-        const y = parseInt(yearInput, 10);
-        const m = parseInt(monthInput, 10);
-        const d = parseInt(dayInput, 10);
-
-        if (isNaN(y) || isNaN(m) || isNaN(d)) {
-            showError('年月日必須為數字。');
-            return;
-        }
-        if (y < 1900 || y > 2100) {
-            showError('年份請輸入 1900 ~ 2100 之間。');
-            return;
-        }
-        if (m < 1 || m > 12) {
-            showError('月份請輸入 1 ~ 12。');
-            return;
-        }
-        if (d < 1 || d > 31) {
-            showError('日期請輸入 1 ~ 31。');
-            return;
-        }
-
-        // 3. 處理時辰與子時換日
-        let hour = 12;          // 預設中午（不影響日柱）
-        let useNextDay = false;
-
-        if (hourVal === -1) {
-            // 未知時辰，時柱顯示未知
-        } else if (hourVal === 23) {
-            hour = 0;
-            useNextDay = true;  // 23點屬於次日
-        } else if (hourVal >= 0 && hourVal <= 22) {
-            hour = hourVal;
-        } else {
-            showError('時辰選項無效。');
-            return;
-        }
-
-        // 4. 建立 Solar 物件（直接在此處捕捉異常）
-        let solar;
-        try {
-            if (useNextDay) {
-                const today = Solar.fromYmd(y, m, d);
-                const tomorrow = today.next(1);  // 次日
-                solar = Solar.fromYmdH(tomorrow.getYear(), tomorrow.getMonth(), tomorrow.getDay(), 0);
-            } else {
-                solar = Solar.fromYmdH(y, m, d, hour);
+    }
+    if (monthIndex === -1) {
+        for (let i = 0; i < jieqiNames.length; i++) {
+            if (!isBeforeJieqi(year, month, day, jieqiNames[i])) {
+                // 第一個不早於的節氣即為所屬月（立春為寅月起點）
+                monthIndex = i;
+                break;
             }
-        } catch (e) {
-            // 正常日期也可能因為庫的內部錯誤而進到這裡，顯示明確訊息
-            showError('日期計算失敗，請確認日期是否真實存在（例如 2/30）。若確定無誤，請重新整理頁面再試。');
-            return;
         }
+        if (monthIndex === -1) monthIndex = 0; // 預設立春
+    }
+    // 地支索引：寅2, 卯3, 辰4, 巳5, 午6, 未7, 申8, 酉9, 戌10, 亥11, 子0, 丑1
+    const dzIndex = (monthIndex + 2) % 12; // 立春(0) → 寅(2)
+    // 月天干：由年干與寅月天干推算
+    const yearTg = ((year - 4) % 10 + 10) % 10;
+    const baseTg = YEAR_TG_TO_YIN_TG[yearTg]; // 寅月天干
+    const tgIndex = (baseTg + monthIndex) % 10;
+    return GAN[tgIndex] + ZHI[dzIndex];
+}
 
-        // 5. 取得四柱
-        const lunar = solar.getLunar();
-        const yearPillar = lunar.getYearInGanZhiExact();
-        const monthPillar = lunar.getMonthInGanZhiExact();
-        const dayPillar = lunar.getDayInGanZhi();
+// ---------- 儒略日數計算（格里曆）----------
+function computeJDN(year, month, day) {
+    const a = Math.floor((14 - month) / 12);
+    const y = year + 4800 - a;
+    const m = month + 12 * a - 3;
+    return day + Math.floor((153 * m + 2) / 5) + 365 * y
+         + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) - 32045;
+}
 
-        let timePillar;
-        if (hourVal === -1) {
-            timePillar = '未知';
-        } else {
-            timePillar = lunar.getTimeInGanZhi();
-        }
+// ---------- 日柱（基準：1958-04-17 = 甲子日，JDN 2436311）----------
+function getDayPillar(year, month, day) {
+    const jdn = computeJDN(year, month, day);
+    const offset = ((jdn - 2436311) % 60 + 60) % 60;
+    const tg = offset % 10;
+    const dz = offset % 12;
+    return { pillar: GAN[tg] + ZHI[dz], dayTgIndex: tg };
+}
 
-        const full = `${yearPillar} ${monthPillar} ${dayPillar} ${timePillar}`;
-        document.getElementById('baziText').innerText = full;
-        document.getElementById('result').style.display = 'block';
-        document.getElementById('errorMsg').innerText = '';
+// ---------- 時柱（含子時換日）----------
+function getHourPillar(dayInfo, hour, year, month, day) {
+    // 若時辰為 23，則日柱應變為次日
+    let dayTg = dayInfo.dayTgIndex;
+    if (hour === 23) {
+        // 計算次日的日干
+        const nextDate = new Date(year, month-1, day);
+        nextDate.setDate(nextDate.getDate() + 1);
+        const ny = nextDate.getFullYear();
+        const nm = nextDate.getMonth() + 1;
+        const nd = nextDate.getDate();
+        const nextJdn = computeJDN(ny, nm, nd);
+        const nextOffset = ((nextJdn - 2436311) % 60 + 60) % 60;
+        dayTg = nextOffset % 10;
+    }
+    const dzIndex = HOUR_TO_ZHI[hour];
+    const baseTg = DAY_TG_TO_ZI_TG[dayTg];
+    const tgIndex = (baseTg + dzIndex) % 10;
+    return GAN[tgIndex] + ZHI[dzIndex];
+}
+
+// ---------- 驗證日期是否真實存在 ----------
+function isValidDate(y, m, d) {
+    if (m < 1 || m > 12 || d < 1 || d > 31) return false;
+    // 檢查該月天數
+    const daysInMonth = new Date(y, m, 0).getDate(); // 第0天是上個月最後一天
+    return d <= daysInMonth;
+}
+
+// ===================== UI 邏輯 =====================
+function showError(msg) {
+    document.getElementById('errorMsg').innerText = msg;
+    document.getElementById('result').style.display = 'none';
+}
+
+function calculateBazi() {
+    document.getElementById('errorMsg').innerText = '';
+    document.getElementById('result').style.display = 'none';
+
+    const y = parseInt(document.getElementById('year').value);
+    const m = parseInt(document.getElementById('month').value);
+    const d = parseInt(document.getElementById('day').value);
+    const hourVal = parseInt(document.getElementById('hourSelect').value);
+
+    if (isNaN(y) || isNaN(m) || isNaN(d)) {
+        showError('請完整填寫年月日。');
+        return;
+    }
+    if (y < 1900 || y > 2100) {
+        showError('年份請輸入 1900 ~ 2100 之間。');
+        return;
+    }
+    if (!isValidDate(y, m, d)) {
+        showError('日期不存在，例如 2/30、4/31 等。');
+        return;
     }
 
-    // ---------- 複製功能 ----------
-    function copyBazi() {
-        const text = document.getElementById('baziText').innerText;
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(text).then(() => {
-                alert('已複製，可貼上進行解盤。');
-            }).catch(() => {
-                alert('複製失敗，請手動選取複製。');
-            });
-        } else {
-            const range = document.createRange();
-            range.selectNode(document.getElementById('baziText'));
-            window.getSelection().removeAllRanges();
-            window.getSelection().addRange(range);
-            alert('已選取文字，請按 Ctrl+C 複製');
-        }
+    // 處理時辰
+    let useNextDay = false;
+    let hour = 12; // 預設中午
+
+    if (hourVal === -1) {
+        // 時辰未知，保留中午12點計算其他柱，時柱顯示未知
+    } else if (hourVal === 23) {
+        hour = 0;
+        useNextDay = true;
+    } else if (hourVal >= 0 && hourVal <= 22) {
+        hour = hourVal;
+    } else {
+        showError('時辰選項無效。');
+        return;
     }
+
+    // 計算日柱（若子時換日則使用次日）
+    let yearForDay = y, monthForDay = m, dayForDay = d;
+    if (useNextDay) {
+        const nextDate = new Date(y, m-1, d);
+        nextDate.setDate(nextDate.getDate() + 1);
+        yearForDay = nextDate.getFullYear();
+        monthForDay = nextDate.getMonth() + 1;
+        dayForDay = nextDate.getDate();
+    }
+
+    const dayInfo = getDayPillar(yearForDay, monthForDay, dayForDay);
+    const yearPillar = getYearPillar(y, m, d);
+    const monthPillar = getMonthPillar(y, m, d);
+    let hourPillar;
+    if (hourVal === -1) {
+        hourPillar = '未知';
+    } else {
+        hourPillar = getHourPillar(dayInfo, hour, yearForDay, monthForDay, dayForDay);
+    }
+
+    const full = `${yearPillar} ${monthPillar} ${dayInfo.pillar} ${hourPillar}`;
+    document.getElementById('baziText').innerText = full;
+    document.getElementById('result').style.display = 'block';
+}
+
+function copyBazi() {
+    const text = document.getElementById('baziText').innerText;
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => {
+            alert('已複製，可貼上進行解盤。');
+        }).catch(() => {
+            alert('複製失敗，請手動選取複製。');
+        });
+    } else {
+        const range = document.createRange();
+        range.selectNode(document.getElementById('baziText'));
+        window.getSelection().removeAllRanges();
+        window.getSelection().addRange(range);
+        alert('已選取文字，請按 Ctrl+C 複製');
+    }
+}
 </script>
-
 </body>
 </html>
