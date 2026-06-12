@@ -34,7 +34,7 @@
     <input type="number" id="day" placeholder="例如：15">
     
     <label>出生時辰 (0-23)：</label>
-    <input type="number" id="hour" placeholder="例如：8">
+    <input type="number" id="hour" placeholder="留白代表不確定時間">
 
     <button onclick="calculateBazi()">計算八字</button>
 
@@ -50,28 +50,34 @@
         const year = parseInt(document.getElementById('year').value);
         const month = parseInt(document.getElementById('month').value);
         const day = parseInt(document.getElementById('day').value);
-        const hour = parseInt(document.getElementById('hour').value);
+        const hourInput = document.getElementById('hour').value;
 
         if(!year || !month || !day) {
-            alert("請至少填寫完整的年月日時！");
+            alert("請至少填寫完整的年月日！");
             return;
         }
 
         try {
-            // 將輸入的時間轉換為 Solar 物件，再轉為 Lunar 物件
-            const solar = Solar.fromYmdH(year, month, day, hour || 0);
+            let hour = 12; // 預設使用中午 12 點計算，確保日柱與月柱準確
+            let isHourUnknown = true;
+
+            if (hourInput !== "") {
+                hour = parseInt(hourInput);
+                isHourUnknown = false;
+            }
+
+            const solar = Solar.fromYmdH(year, month, day, hour);
             const lunar = solar.getLunar();
 
-            // 取得對應的四柱天干地支
             const bazi_year_pillar = lunar.getYearInGanZhiExact();
             const bazi_month_pillar = lunar.getMonthInGanZhiExact();
             const bazi_day_pillar = lunar.getDayInGanZhiExact();
-            const bazi_hour_pillar = lunar.getTimeInGanZhi();
+            
+            // 判斷時柱輸出
+            const bazi_hour_pillar = isHourUnknown ? "未知" : lunar.getTimeInGanZhi();
 
-            // 組合完整四柱
             const bazi_full = `${bazi_year_pillar} ${bazi_month_pillar} ${bazi_day_pillar} ${bazi_hour_pillar}`;
 
-            // 顯示在畫面上
             document.getElementById('baziText').innerText = bazi_full;
             document.getElementById('result').style.display = 'block';
         } catch (error) {
