@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>專屬生辰換算工具</title>
+    <script src="https://unpkg.com/lunar-javascript/lunar.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; max-width: 400px; margin: auto; background-color: #f9f9f9; }
+        .container { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #333; }
+        label { font-weight: bold; margin-top: 10px; display: block; color: #555; }
+        input { width: 100%; padding: 10px; margin: 8px 0 20px 0; box-sizing: border-box; border: 1px solid #ccc; border-radius: 5px; }
+        button { width: 100%; padding: 12px; background-color: #4CAF50; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; }
+        button:hover { background-color: #45a049; }
+        #result { margin-top: 20px; padding: 15px; background: #e7f3fe; border-left: 6px solid #2196F3; display: none; }
+        #baziText { font-size: 20px; font-weight: bold; letter-spacing: 2px; text-align: center; color: #333; }
+        .copy-btn { background-color: #2196F3; margin-top: 10px; }
+        .copy-btn:hover { background-color: #0b7dda; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>生辰換算工具</h2>
+    
+    <label>出生年份 (西元)：</label>
+    <input type="number" id="year" placeholder="例如：1990">
+    
+    <label>出生月份 (1-12)：</label>
+    <input type="number" id="month" placeholder="例如：6">
+    
+    <label>出生日期 (1-31)：</label>
+    <input type="number" id="day" placeholder="例如：15">
+    
+    <label>出生時辰 (0-23)：</label>
+    <input type="number" id="hour" placeholder="例如：8">
+
+    <button onclick="calculateBazi()">計算八字</button>
+
+    <div id="result">
+        <p style="text-align: center; margin: 0; color: #666;">您的完整四柱：</p>
+        <p id="baziText"></p>
+        <button class="copy-btn" onclick="copyBazi()">一鍵複製結果</button>
+    </div>
+</div>
+
+<script>
+    function calculateBazi() {
+        const year = parseInt(document.getElementById('year').value);
+        const month = parseInt(document.getElementById('month').value);
+        const day = parseInt(document.getElementById('day').value);
+        const hour = parseInt(document.getElementById('hour').value);
+
+        if(!year || !month || !day) {
+            alert("請至少填寫完整的年月日時！");
+            return;
+        }
+
+        try {
+            // 將輸入的時間轉換為 Solar 物件，再轉為 Lunar 物件
+            const solar = Solar.fromYmdH(year, month, day, hour || 0);
+            const lunar = solar.getLunar();
+
+            // 取得對應的四柱天干地支
+            const bazi_year_pillar = lunar.getYearInGanZhiExact();
+            const bazi_month_pillar = lunar.getMonthInGanZhiExact();
+            const bazi_day_pillar = lunar.getDayInGanZhiExact();
+            const bazi_hour_pillar = lunar.getTimeInGanZhi();
+
+            // 組合完整四柱
+            const bazi_full = `${bazi_year_pillar} ${bazi_month_pillar} ${bazi_day_pillar} ${bazi_hour_pillar}`;
+
+            // 顯示在畫面上
+            document.getElementById('baziText').innerText = bazi_full;
+            document.getElementById('result').style.display = 'block';
+        } catch (error) {
+            alert("日期計算錯誤，請檢查輸入是否正確。");
+        }
+    }
+
+    function copyBazi() {
+        const text = document.getElementById('baziText').innerText;
+        navigator.clipboard.writeText(text).then(() => {
+            alert("已複製完整四柱！請回到 Gemini 貼上給大師解盤。");
+        }).catch(err => {
+            alert("複製失敗，請手動選取文字複製。");
+        });
+    }
+</script>
+
+</body>
+</html>
