@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>八字排盤（修正版）</title>
-    <!-- 若 CDN 失效，可自行下載 lunar.min.js 放到同資料夾，並改用本地路徑 -->
+    <title>八字排盤（穩定版）</title>
+    <!-- 若 CDN 失效，可自行下載並改用本地路徑 -->
     <script src="https://unpkg.com/lunar-typescript@1.6.11/dist/lunar.min.js"></script>
     <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: 'Segoe UI', sans-serif;
             padding: 20px;
@@ -20,15 +21,15 @@
             border-radius: 10px;
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
-        h2 { text-align: center; color: #333; }
+        h2 { text-align: center; margin-bottom: 20px; color: #333; }
         label { font-weight: bold; margin-top: 10px; display: block; color: #555; }
         input, select {
             width: 100%;
             padding: 10px;
             margin: 8px 0 20px 0;
-            box-sizing: border-box;
             border: 1px solid #ccc;
             border-radius: 5px;
+            font-size: 16px;
         }
         button {
             width: 100%;
@@ -54,9 +55,11 @@
             letter-spacing: 2px;
             text-align: center;
             color: #333;
+            word-break: keep-all;
         }
         .copy-btn { background: #2196F3; margin-top: 10px; }
         .copy-btn:hover { background: #0b7dda; }
+        .error { color: #d32f2f; font-size: 14px; margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -64,16 +67,16 @@
 <div class="container">
     <h2>八字排盤</h2>
 
-    <label>西元年：</label>
+    <label for="year">西元年（1900–2100）</label>
     <input type="number" id="year" placeholder="1990" min="1900" max="2100">
 
-    <label>月（1-12）：</label>
+    <label for="month">月（1–12）</label>
     <input type="number" id="month" placeholder="6" min="1" max="12">
 
-    <label>日（1-31）：</label>
+    <label for="day">日（1–31）</label>
     <input type="number" id="day" placeholder="15" min="1" max="31">
 
-    <label>時辰（0-23，23點為次日子時）：</label>
+    <label for="hourSelect">時辰</label>
     <select id="hourSelect">
         <option value="-1">未知（不影響日柱）</option>
         <option value="0">0 時（子時）</option>
@@ -99,107 +102,158 @@
         <option value="20">20 時（戌時）</option>
         <option value="21">21 時（亥時）</option>
         <option value="22">22 時（亥時）</option>
-        <option value="23">23 時（子時）</option>
+        <option value="23">23 時（子時，算次日）</option>
     </select>
 
     <button onclick="calculateBazi()">開始排盤</button>
 
     <div id="result">
-        <p style="text-align: center; margin: 0; color: #666;">您的八字四柱：</p>
+        <p style="text-align: center; margin-bottom: 8px; color: #666;">您的八字四柱：</p>
         <p id="baziText"></p>
         <button class="copy-btn" onclick="copyBazi()">一鍵複製</button>
     </div>
+    <div id="errorMsg" class="error"></div>
 </div>
 
 <script>
+    // ---------- 工具函數 ----------
+    function showError(msg) {
+        document.getElementById('errorMsg').innerText = msg;
+        document.getElementById('result').style.display = 'none';
+    }
+
+    function isValidDate(y, m, d) {
+        // 使用 Solar 靜態方法預先檢查（不拋錯）
+        try {
+            const test = Solar.fromYmd(y, m, d);
+            // 進一步確認回傳的年月日與輸入一致（防止極端情況）
+            return test.getYear() === y && test.getMonth() === m && test.getDay() === d;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    // ---------- 主要計算 ----------
     function calculateBazi() {
-        const y = parseInt(document.getElementById('year').value);
-        const m = parseInt(document.getElementById('month').value);
-        const d = parseInt(document.getElementById('day').value);
-        const hourVal = parseInt(document.getElementById('hourSelect').value);
+        // 清除舊訊息
+        document.getElementById('errorMsg').innerText = '';
+        document.getElementById('result').style.display = 'none';
 
+        // 1. 檢查日曆庫是否載入成功
+        if (typeof Solar === 'undefined' || typeof Lunar === 'undefined') {
+            showError('日曆庫載入失敗，請檢查網路連線或稍後再試。');
+            return;
+        }
+
+        // 2. 取得輸入值
+        const yearInput = document.getElementById('year').value.trim();
+        const monthInput = document.getElementById('month').value.trim();
+        const dayInput = document.getElementById('day').value.trim();
+        const hourSelect = document.getElementById('hourSelect');
+        const hourVal = parseInt(hourSelect.value);
+
+        // 3. 基本空值檢查
+        if (yearInput === '' || monthInput === '' || dayInput === '') {
+            showError('請完整填寫年月日。');
+            return;
+        }
+
+        const y = parseInt(yearInput, 10);
+        const m = parseInt(monthInput, 10);
+        const d = parseInt(dayInput, 10);
+
+        // 4. 型別與範圍檢查
         if (isNaN(y) || isNaN(m) || isNaN(d)) {
-            alert('請完整填寫年月日');
+            showError('年月日必須為數字。');
             return;
         }
-        if (m < 1 || m > 12 || d < 1 || d > 31) {
-            alert('月份或日期超出範圍');
+        if (y < 1900 || y > 2100) {
+            showError('年份請輸入 1900 ~ 2100 之間。');
+            return;
+        }
+        if (m < 1 || m > 12) {
+            showError('月份請輸入 1 ~ 12。');
+            return;
+        }
+        if (d < 1 || d > 31) {
+            showError('日期請輸入 1 ~ 31。');
             return;
         }
 
-        let hour = 12;           // 預設中午
-        let useNextDay = false;  // 是否要用次日計算日柱（給時柱用）
+        // 5. 檢查日期是否真實存在（例如 2/30）
+        if (!isValidDate(y, m, d)) {
+            showError('日期不存在，例如 2/30、4/31 等。');
+            return;
+        }
+
+        // 6. 處理時辰與子時換日
+        let hour = 12;          // 預設中午（不影響日柱）
+        let useNextDay = false;
 
         if (hourVal === -1) {
-            // 未知時辰，時柱標記「未知」，保留預設午時計算其他柱
+            // 未知時辰：時柱顯示未知，預設中午 12 點
         } else if (hourVal === 23) {
-            // 23 點屬次日子時 → 日期加一天，時辰視為 0
             hour = 0;
-            useNextDay = true;
+            useNextDay = true;  // 23點屬次日
         } else if (hourVal >= 0 && hourVal <= 22) {
             hour = hourVal;
         } else {
-            alert('無效的時辰');
+            showError('時辰選項無效。');
             return;
         }
 
-        // 計算日柱用的日期（若子時換日則加一天）
+        // 7. 建立 Solar 物件（含子時換日處理）
         let solar;
         try {
             if (useNextDay) {
-                // 先構造原日期的次日
-                const tmpSolar = Solar.fromYmd(y, m, d);
-                const next = tmpSolar.next(1); // 取得次日 Solar 物件
-                // 用次日重新建立帶時辰的物件（0點）
-                solar = Solar.fromYmdH(next.getYear(), next.getMonth(), next.getDay(), 0);
+                // 取得次日物件
+                const today = Solar.fromYmd(y, m, d);
+                const tomorrow = today.next(1);  // 返回次日 Solar
+                solar = Solar.fromYmdH(tomorrow.getYear(), tomorrow.getMonth(), tomorrow.getDay(), 0);
             } else {
-                // 未知或一般時辰
                 solar = Solar.fromYmdH(y, m, d, hour);
             }
         } catch (e) {
-            alert('日期不存在，請檢查輸入（如 2/30 不存在）');
+            showError('日期計算異常，請確認輸入正確。');
             return;
         }
 
+        // 8. 轉農曆並取得八字各柱
         const lunar = solar.getLunar();
-
-        // 取得年、月柱（精確節氣）
         const yearPillar = lunar.getYearInGanZhiExact();
         const monthPillar = lunar.getMonthInGanZhiExact();
-
-        // 日柱（此時 solar 已正確，若是子時換日，日柱就是次日）
         const dayPillar = lunar.getDayInGanZhi();
 
-        // 時柱
         let timePillar;
         if (hourVal === -1) {
             timePillar = '未知';
         } else {
-            // 注意：若是子時換日，我們用到的時柱應基於次日日干，
-            // 此處 lunar 已是次日的 lunar，故 getTimeInGanZhi() 正確
+            // 如果子時換日，lunar 已經是次日的八字，時柱直接取即可
             timePillar = lunar.getTimeInGanZhi();
         }
 
         const full = `${yearPillar} ${monthPillar} ${dayPillar} ${timePillar}`;
         document.getElementById('baziText').innerText = full;
         document.getElementById('result').style.display = 'block';
+        document.getElementById('errorMsg').innerText = '';
     }
 
+    // ---------- 複製功能 ----------
     function copyBazi() {
         const text = document.getElementById('baziText').innerText;
         if (navigator.clipboard) {
             navigator.clipboard.writeText(text).then(() => {
-                alert('已複製，可貼上進行八字解盤。');
+                alert('已複製，可貼上進行解盤。');
             }).catch(() => {
-                alert('複製失敗，請手動選取。');
+                alert('複製失敗，請手動選取複製。');
             });
         } else {
-            // 回退方案：選取文字提示手動複製
+            // 回退方案
             const range = document.createRange();
             range.selectNode(document.getElementById('baziText'));
             window.getSelection().removeAllRanges();
             window.getSelection().addRange(range);
-            alert('已選取八字，請按 Ctrl+C 複製');
+            alert('已選取文字，請按 Ctrl+C 複製');
         }
     }
 </script>
