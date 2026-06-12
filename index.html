@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>八字排盤（穩定版）</title>
-    <!-- 若 CDN 失效，可自行下載並改用本地路徑 -->
+    <title>八字排盤（修復版）</title>
+    <!-- 依然使用您指定的 lunar-typescript，但避免 CDN 掛掉，可下載後放同目錄 -->
     <script src="https://unpkg.com/lunar-typescript@1.6.11/dist/lunar.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -116,43 +116,31 @@
 </div>
 
 <script>
-    // ---------- 工具函數 ----------
+    // ---------- 顯示錯誤 ----------
     function showError(msg) {
         document.getElementById('errorMsg').innerText = msg;
         document.getElementById('result').style.display = 'none';
     }
 
-    function isValidDate(y, m, d) {
-        // 使用 Solar 靜態方法預先檢查（不拋錯）
-        try {
-            const test = Solar.fromYmd(y, m, d);
-            // 進一步確認回傳的年月日與輸入一致（防止極端情況）
-            return test.getYear() === y && test.getMonth() === m && test.getDay() === d;
-        } catch (e) {
-            return false;
-        }
-    }
-
-    // ---------- 主要計算 ----------
+    // ---------- 主計算 ----------
     function calculateBazi() {
         // 清除舊訊息
         document.getElementById('errorMsg').innerText = '';
         document.getElementById('result').style.display = 'none';
 
-        // 1. 檢查日曆庫是否載入成功
+        // 1. 檢查庫是否載入
         if (typeof Solar === 'undefined' || typeof Lunar === 'undefined') {
-            showError('日曆庫載入失敗，請檢查網路連線或稍後再試。');
+            showError('日曆庫載入失敗，請重新整理頁面。');
             return;
         }
 
-        // 2. 取得輸入值
+        // 2. 讀取輸入
         const yearInput = document.getElementById('year').value.trim();
         const monthInput = document.getElementById('month').value.trim();
         const dayInput = document.getElementById('day').value.trim();
         const hourSelect = document.getElementById('hourSelect');
         const hourVal = parseInt(hourSelect.value);
 
-        // 3. 基本空值檢查
         if (yearInput === '' || monthInput === '' || dayInput === '') {
             showError('請完整填寫年月日。');
             return;
@@ -162,7 +150,6 @@
         const m = parseInt(monthInput, 10);
         const d = parseInt(dayInput, 10);
 
-        // 4. 型別與範圍檢查
         if (isNaN(y) || isNaN(m) || isNaN(d)) {
             showError('年月日必須為數字。');
             return;
@@ -180,21 +167,15 @@
             return;
         }
 
-        // 5. 檢查日期是否真實存在（例如 2/30）
-        if (!isValidDate(y, m, d)) {
-            showError('日期不存在，例如 2/30、4/31 等。');
-            return;
-        }
-
-        // 6. 處理時辰與子時換日
+        // 3. 處理時辰與子時換日
         let hour = 12;          // 預設中午（不影響日柱）
         let useNextDay = false;
 
         if (hourVal === -1) {
-            // 未知時辰：時柱顯示未知，預設中午 12 點
+            // 未知時辰，時柱顯示未知
         } else if (hourVal === 23) {
             hour = 0;
-            useNextDay = true;  // 23點屬次日
+            useNextDay = true;  // 23點屬於次日
         } else if (hourVal >= 0 && hourVal <= 22) {
             hour = hourVal;
         } else {
@@ -202,23 +183,23 @@
             return;
         }
 
-        // 7. 建立 Solar 物件（含子時換日處理）
+        // 4. 建立 Solar 物件（直接在此處捕捉異常）
         let solar;
         try {
             if (useNextDay) {
-                // 取得次日物件
                 const today = Solar.fromYmd(y, m, d);
-                const tomorrow = today.next(1);  // 返回次日 Solar
+                const tomorrow = today.next(1);  // 次日
                 solar = Solar.fromYmdH(tomorrow.getYear(), tomorrow.getMonth(), tomorrow.getDay(), 0);
             } else {
                 solar = Solar.fromYmdH(y, m, d, hour);
             }
         } catch (e) {
-            showError('日期計算異常，請確認輸入正確。');
+            // 正常日期也可能因為庫的內部錯誤而進到這裡，顯示明確訊息
+            showError('日期計算失敗，請確認日期是否真實存在（例如 2/30）。若確定無誤，請重新整理頁面再試。');
             return;
         }
 
-        // 8. 轉農曆並取得八字各柱
+        // 5. 取得四柱
         const lunar = solar.getLunar();
         const yearPillar = lunar.getYearInGanZhiExact();
         const monthPillar = lunar.getMonthInGanZhiExact();
@@ -228,7 +209,6 @@
         if (hourVal === -1) {
             timePillar = '未知';
         } else {
-            // 如果子時換日，lunar 已經是次日的八字，時柱直接取即可
             timePillar = lunar.getTimeInGanZhi();
         }
 
@@ -248,7 +228,6 @@
                 alert('複製失敗，請手動選取複製。');
             });
         } else {
-            // 回退方案
             const range = document.createRange();
             range.selectNode(document.getElementById('baziText'));
             window.getSelection().removeAllRanges();
