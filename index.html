@@ -3,17 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>八字排盤 (獨立版)</title>
+    <title>八字排盤（lunar-typescript 版）</title>
+    <!-- 使用 unpkg 引入 lunar-typescript 最新版 -->
+    <script src="https://unpkg.com/lunar-typescript@1.6.11/dist/lunar.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; padding: 20px; max-width: 420px; margin: auto; background: #f9f9f9; }
-        .container { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            padding: 20px;
+            max-width: 420px;
+            margin: auto;
+            background: #f9f9f9;
+        }
+        .container {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
         h2 { text-align: center; color: #333; }
         label { font-weight: bold; margin-top: 10px; display: block; color: #555; }
-        input, select { width: 100%; padding: 10px; margin: 8px 0 20px 0; box-sizing: border-box; border: 1px solid #ccc; border-radius: 5px; }
-        button { width: 100%; padding: 12px; background: #4CAF50; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0 20px 0;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
         button:hover { background: #45a049; }
-        #result { margin-top: 20px; padding: 15px; background: #e7f3fe; border-left: 6px solid #2196F3; display: none; }
-        #baziText { font-size: 20px; font-weight: bold; letter-spacing: 2px; text-align: center; color: #333; }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e7f3fe;
+            border-left: 6px solid #2196F3;
+            display: none;
+        }
+        #baziText {
+            font-size: 20px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-align: center;
+            color: #333;
+        }
         .copy-btn { background: #2196F3; margin-top: 10px; }
         .copy-btn:hover { background: #0b7dda; }
     </style>
@@ -23,213 +64,105 @@
 <div class="container">
     <h2>八字排盤</h2>
 
-    <label>出生年份 (西元) ：</label>
+    <label>西元年：</label>
     <input type="number" id="year" placeholder="1990" min="1900" max="2100">
 
-    <label>出生月份 (1-12) ：</label>
+    <label>月（1-12）：</label>
     <input type="number" id="month" placeholder="6" min="1" max="12">
 
-    <label>出生日期 (1-31) ：</label>
+    <label>日（1-31）：</label>
     <input type="number" id="day" placeholder="15" min="1" max="31">
 
-    <label>出生時辰 (0-23) ：</label>
+    <label>時辰：</label>
     <select id="hourSelect">
-        <option value="-1">未知 (預設午時)</option>
-        <option value="0">0 時 (子時)</option>
-        <option value="1">1 時 (丑時)</option>
-        <option value="2">2 時 (丑時)</option>
-        <option value="3">3 時 (寅時)</option>
-        <option value="4">4 時 (寅時)</option>
-        <option value="5">5 時 (卯時)</option>
-        <option value="6">6 時 (卯時)</option>
-        <option value="7">7 時 (辰時)</option>
-        <option value="8">8 時 (辰時)</option>
-        <option value="9">9 時 (巳時)</option>
-        <option value="10">10 時 (巳時)</option>
-        <option value="11">11 時 (午時)</option>
-        <option value="12">12 時 (午時)</option>
-        <option value="13">13 時 (未時)</option>
-        <option value="14">14 時 (未時)</option>
-        <option value="15">15 時 (申時)</option>
-        <option value="16">16 時 (申時)</option>
-        <option value="17">17 時 (酉時)</option>
-        <option value="18">18 時 (酉時)</option>
-        <option value="19">19 時 (戌時)</option>
-        <option value="20">20 時 (戌時)</option>
-        <option value="21">21 時 (亥時)</option>
-        <option value="22">22 時 (亥時)</option>
-        <option value="23">23 時 (子時)</option>
+        <option value="-1">未知（預設午時）</option>
+        <option value="0">0 時（子時）</option>
+        <option value="1">1 時（丑時）</option>
+        <option value="2">2 時（丑時）</option>
+        <option value="3">3 時（寅時）</option>
+        <option value="4">4 時（寅時）</option>
+        <option value="5">5 時（卯時）</option>
+        <option value="6">6 時（卯時）</option>
+        <option value="7">7 時（辰時）</option>
+        <option value="8">8 時（辰時）</option>
+        <option value="9">9 時（巳時）</option>
+        <option value="10">10 時（巳時）</option>
+        <option value="11">11 時（午時）</option>
+        <option value="12">12 時（午時）</option>
+        <option value="13">13 時（未時）</option>
+        <option value="14">14 時（未時）</option>
+        <option value="15">15 時（申時）</option>
+        <option value="16">16 時（申時）</option>
+        <option value="17">17 時（酉時）</option>
+        <option value="18">18 時（酉時）</option>
+        <option value="19">19 時（戌時）</option>
+        <option value="20">20 時（戌時）</option>
+        <option value="21">21 時（亥時）</option>
+        <option value="22">22 時（亥時）</option>
+        <option value="23">23 時（子時）</option>
     </select>
 
-    <button onclick="calculateBazi()">排盤</button>
+    <button onclick="calculateBazi()">開始排盤</button>
 
     <div id="result">
-        <p style="text-align: center; margin: 0; color: #666;">您的四柱八字：</p>
+        <p style="text-align: center; margin: 0; color: #666;">您的八字四柱：</p>
         <p id="baziText"></p>
         <button class="copy-btn" onclick="copyBazi()">一鍵複製</button>
     </div>
 </div>
 
 <script>
-// ===================== 八字計算引擎 =====================
-const GAN = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
-const ZHI = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
-const HOUR_ZHI_MAP = [0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,0]; // 小時->地支索引
+    // 使用 lunar-typescript 全域變數 Lunar, Solar
+    function calculateBazi() {
+        const y = parseInt(document.getElementById('year').value);
+        const m = parseInt(document.getElementById('month').value);
+        const d = parseInt(document.getElementById('day').value);
+        const hourVal = parseInt(document.getElementById('hourSelect').value);
 
-// --- 節氣日期表 (用於年柱／月柱精確劃分，資料範圍 2024-2030，其餘年份使用近似) ---
-const JIEQI = {
-    2024: { lichun: [2,4], jingzhe: [3,5], qingming: [4,4], lixia: [5,5], mangzhong: [6,5], xiaoshu: [7,6], liqiu: [8,7], bailu: [9,7], hanlu: [10,8], lidong: [11,7], daxue: [12,6], xiaohan: [1,5] },
-    2025: { lichun: [2,3], jingzhe: [3,5], qingming: [4,4], lixia: [5,5], mangzhong: [6,5], xiaoshu: [7,7], liqiu: [8,7], bailu: [9,7], hanlu: [10,8], lidong: [11,7], daxue: [12,7], xiaohan: [1,5] },
-    2026: { lichun: [2,4], jingzhe: [3,5], qingming: [4,5], lixia: [5,5], mangzhong: [6,5], xiaoshu: [7,7], liqiu: [8,7], bailu: [9,7], hanlu: [10,8], lidong: [11,7], daxue: [12,7], xiaohan: [1,5] },
-    2027: { lichun: [2,4], jingzhe: [3,6], qingming: [4,5], lixia: [5,6], mangzhong: [6,6], xiaoshu: [7,7], liqiu: [8,8], bailu: [9,8], hanlu: [10,9], lidong: [11,8], daxue: [12,7], xiaohan: [1,6] },
-    2028: { lichun: [2,4], jingzhe: [3,5], qingming: [4,4], lixia: [5,5], mangzhong: [6,5], xiaoshu: [7,6], liqiu: [8,7], bailu: [9,7], hanlu: [10,8], lidong: [11,7], daxue: [12,6], xiaohan: [1,6] },
-    2029: { lichun: [2,3], jingzhe: [3,5], qingming: [4,4], lixia: [5,5], mangzhong: [6,5], xiaoshu: [7,7], liqiu: [8,7], bailu: [9,7], hanlu: [10,8], lidong: [11,7], daxue: [12,7], xiaohan: [1,5] },
-    2030: { lichun: [2,4], jingzhe: [3,5], qingming: [4,5], lixia: [5,5], mangzhong: [6,5], xiaoshu: [7,7], liqiu: [8,7], bailu: [9,7], hanlu: [10,8], lidong: [11,7], daxue: [12,7], xiaohan: [1,5] }
-};
-const JIEQI_NAMES = ['lichun','jingzhe','qingming','lixia','mangzhong','xiaoshu','liqiu','bailu','hanlu','lidong','daxue','xiaohan'];
-const MONTH_ZHI_INDEX = [2,3,4,5,6,7,8,9,10,11,0,1]; // 寅卯辰巳午未申酉戌亥子丑 對應節氣
-
-function getJieqiDate(year, jieqiName) {
-    if (JIEQI[year] && JIEQI[year][jieqiName]) {
-        return JIEQI[year][jieqiName];
-    }
-    // 近似值：立春2月4日，驚蟄3月6日，清明4月5日，立夏5月6日，芒種6月6日，
-    // 小暑7月7日，立秋8月7日，白露9月8日，寒露10月8日，立冬11月7日，大雪12月7日，小寒1月6日
-    const approx = {
-        lichun: [2,4], jingzhe: [3,6], qingming: [4,5], lixia: [5,6],
-        mangzhong: [6,6], xiaoshu: [7,7], liqiu: [8,7], bailu: [9,8],
-        hanlu: [10,8], lidong: [11,7], daxue: [12,7], xiaohan: [1,6]
-    };
-    return approx[jieqiName];
-}
-
-function isBeforeJieqi(year, month, day, jieqiName) {
-    const [jMonth, jDay] = getJieqiDate(year, jieqiName);
-    if (month < jMonth) return true;
-    if (month > jMonth) return false;
-    return day < jDay;
-}
-
-// 計算年柱（以立春為界）
-function getYearPillar(year, month, day) {
-    let cycYear;
-    if (isBeforeJieqi(year, month, day, 'lichun')) {
-        cycYear = year - 1; // 仍為上一甲子年
-    } else {
-        cycYear = year;
-    }
-    const tg = ((cycYear - 4) % 10 + 10) % 10;
-    const dz = ((cycYear - 4) % 12 + 12) % 12;
-    return GAN[tg] + ZHI[dz];
-}
-
-// 計算月柱（以節氣為界）
-function getMonthPillar(year, month, day) {
-    // 先找該日所屬的節氣月
-    let y = year;
-    let m = month;
-    let d = day;
-    // 若在立春前，則年份須視為前一年，但我們已傳入原始日期，此處直接處理
-    // 依序檢查 11 個節氣（立春到小寒），決定月地支索引
-    let monthIndex = -1;
-    for (let i = 0; i < JIEQI_NAMES.length; i++) {
-        const [jMonth, jDay] = getJieqiDate(y, JIEQI_NAMES[i]);
-        if (m < jMonth || (m === jMonth && d < jDay)) {
-            monthIndex = (i - 1 + 12) % 12;
-            break;
+        if (isNaN(y) || isNaN(m) || isNaN(d)) {
+            alert('請完整填寫年月日');
+            return;
         }
-    }
-    if (monthIndex === -1) monthIndex = 11; // 在小寒之後，即為丑月
-    const dzIdx = MONTH_ZHI_INDEX[monthIndex];
-    // 月天干：甲己年丙作首，乙庚年戊為頭...
-    const yearTg = ((year - 4) % 10 + 10) % 10;
-    const base = [2,4,6,8,0,2,4,6,8,0][yearTg]; // 寅月天干起點
-    const offset = (monthIndex - 0 + 12) % 12; // 寅月偏移0
-    const tgIdx = (base + offset) % 10;
-    return GAN[tgIdx] + ZHI[dzIdx];
-}
+        if (m < 1 || m > 12 || d < 1 || d > 31) {
+            alert('月份或日期超出範圍');
+            return;
+        }
 
-// 儒略日數計算 (格里曆)
-function computeJDN(year, month, day) {
-    const a = Math.floor((14 - month) / 12);
-    const y = year + 4800 - a;
-    const m = month + 12 * a - 3;
-    return day + Math.floor((153 * m + 2) / 5) + 365 * y
-         + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) - 32045;
-}
+        // 處理時辰未知：預設用中午 12 點（確保日柱不受影響，但時柱標記為未知）
+        let hour = 12;
+        let hourUnknown = false;
+        if (hourVal === -1) {
+            hourUnknown = true;
+        } else if (hourVal >= 0 && hourVal <= 23) {
+            hour = hourVal;
+        } else {
+            alert('無效的時辰');
+            return;
+        }
 
-// 日柱 (基準: 1958-04-17 = 甲子, JDN 2436311)
-function getDayPillar(year, month, day) {
-    const jdn = computeJDN(year, month, day);
-    const offset = ((jdn - 2436311) % 60 + 60) % 60;
-    const tg = offset % 10;
-    const dz = offset % 12;
-    return GAN[tg] + ZHI[dz];
-}
+        // 使用 Solar.fromYmdH 建立西曆對象
+        const solar = Solar.fromYmdH(y, m, d, hour);
+        const lunar = solar.getLunar();
 
-// 時柱 (考慮23時後日柱變更)
-function getHourPillar(hour, dayTgIndex, year, month, day) {
-    if (hour < 0 || hour > 23) return "未知";
-    // 若時辰 >= 23，則日期算次日，日柱需重新計算，時柱依次日天干
-    let useDayTg = dayTgIndex;
-    if (hour === 23) {
-        // 將日期加一天
-        const nextDate = new Date(year, month-1, day);
-        nextDate.setDate(nextDate.getDate() + 1);
-        const ny = nextDate.getFullYear();
-        const nm = nextDate.getMonth() + 1;
-        const nd = nextDate.getDate();
-        const jdn = computeJDN(ny, nm, nd);
-        const off = ((jdn - 2436311) % 60 + 60) % 60;
-        useDayTg = off % 10;
-    }
-    const dzIdx = HOUR_ZHI_MAP[hour];
-    const baseTg = [0,2,4,6,8,0,2,4,6,8][useDayTg]; // 甲己還加甲
-    const tgIdx = (baseTg + dzIdx) % 10;
-    return GAN[tgIdx] + ZHI[dzIdx];
-}
+        // 提取八字各柱（此庫使用精確節氣劃分）
+        const yearPillar  = lunar.getYearInGanZhiExact();
+        const monthPillar = lunar.getMonthInGanZhiExact();
+        const dayPillar   = lunar.getDayInGanZhi();
+        const timePillar  = hourUnknown ? '未知' : lunar.getTimeInGanZhi();
 
-// ===================== 介面邏輯 =====================
-function calculateBazi() {
-    const y = parseInt(document.getElementById('year').value);
-    const m = parseInt(document.getElementById('month').value);
-    const d = parseInt(document.getElementById('day').value);
-    const hourVal = parseInt(document.getElementById('hourSelect').value);
-
-    if (isNaN(y) || isNaN(m) || isNaN(d)) {
-        alert('請填寫完整的年月日');
-        return;
-    }
-    if (m < 1 || m > 12 || d < 1 || d > 31) {
-        alert('月份或日期超出範圍');
-        return;
+        const full = `${yearPillar} ${monthPillar} ${dayPillar} ${timePillar}`;
+        document.getElementById('baziText').innerText = full;
+        document.getElementById('result').style.display = 'block';
     }
 
-    const yearPillar = getYearPillar(y, m, d);
-    const monthPillar = getMonthPillar(y, m, d);
-    const dayPillar = getDayPillar(y, m, d);
-    const dayTgIndex = GAN.indexOf(dayPillar[0]);
-
-    let hourPillar;
-    if (hourVal === -1) {
-        hourPillar = "未知";
-    } else {
-        hourPillar = getHourPillar(hourVal, dayTgIndex, y, m, d);
+    function copyBazi() {
+        const text = document.getElementById('baziText').innerText;
+        navigator.clipboard.writeText(text).then(() => {
+            alert('已複製，可貼上進行八字解盤。');
+        }).catch(() => {
+            alert('複製失敗，請手動選取。');
+        });
     }
-
-    const full = `${yearPillar} ${monthPillar} ${dayPillar} ${hourPillar}`;
-    document.getElementById('baziText').innerText = full;
-    document.getElementById('result').style.display = 'block';
-}
-
-function copyBazi() {
-    const text = document.getElementById('baziText').innerText;
-    navigator.clipboard.writeText(text).then(() => {
-        alert('已複製四柱，可貼上給大師解盤。');
-    }).catch(() => {
-        alert('複製失敗，請手動選取複製。');
-    });
-}
 </script>
 
 </body>
