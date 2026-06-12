@@ -7,7 +7,7 @@
     <script src="https://unpkg.com/lunar-javascript/lunar.js"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; max-width: 400px; margin: auto; background-color: #f9f9f9; }
-        .container { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        。container { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
         h2 { text-align: center; color: #333; }
         label { font-weight: bold; margin-top: 10px; display: block; color: #555; }
         input { width: 100%; padding: 10px; margin: 8px 0 20px 0; box-sizing: border-box; border: 1px solid #ccc; border-radius: 5px; }
@@ -15,8 +15,8 @@
         button:hover { background-color: #45a049; }
         #result { margin-top: 20px; padding: 15px; background: #e7f3fe; border-left: 6px solid #2196F3; display: none; }
         #baziText { font-size: 20px; font-weight: bold; letter-spacing: 2px; text-align: center; color: #333; }
-        .copy-btn { background-color: #2196F3; margin-top: 10px; }
-        .copy-btn:hover { background-color: #0b7dda; }
+        。copy-btn { background-color: #2196F3; margin-top: 10px; }
+        。copy-btn:hover { background-color: #0b7dda; }
     </style>
 </head>
 <body>
@@ -66,7 +66,8 @@
                 isHourUnknown = false;
             }
 
-            const solar = Solar.fromYmdH(year, month, day, hour);
+            // 修正：使用正確的 API 函式，並補齊分鐘與秒數 (0, 0)
+            const solar = Solar.fromYmdHms(year, month, day, hour, 0, 0);
             const lunar = solar.getLunar();
 
             const bazi_year_pillar = lunar.getYearInGanZhiExact();
@@ -81,6 +82,7 @@
             document.getElementById('baziText').innerText = bazi_full;
             document.getElementById('result').style.display = 'block';
         } catch (error) {
+            console.error("詳細錯誤訊息：", error); // 將真實錯誤輸出到開發者工具以便追蹤
             alert("日期計算錯誤，請檢查輸入是否正確。");
         }
     }
