@@ -7,7 +7,7 @@
     <script src="https://unpkg.com/lunar-javascript/lunar.js"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; max-width: 400px; margin: auto; background-color: #f9f9f9; }
-        。container { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .container { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
         h2 { text-align: center; color: #333; }
         label { font-weight: bold; margin-top: 10px; display: block; color: #555; }
         input { width: 100%; padding: 10px; margin: 8px 0 20px 0; box-sizing: border-box; border: 1px solid #ccc; border-radius: 5px; }
@@ -15,8 +15,8 @@
         button:hover { background-color: #45a049; }
         #result { margin-top: 20px; padding: 15px; background: #e7f3fe; border-left: 6px solid #2196F3; display: none; }
         #baziText { font-size: 20px; font-weight: bold; letter-spacing: 2px; text-align: center; color: #333; }
-        。copy-btn { background-color: #2196F3; margin-top: 10px; }
-        。copy-btn:hover { background-color: #0b7dda; }
+        .copy-btn { background-color: #2196F3; margin-top: 10px; }
+        .copy-btn:hover { background-color: #0b7dda; }
     </style>
 </head>
 <body>
@@ -50,39 +50,41 @@
         const year = parseInt(document.getElementById('year').value);
         const month = parseInt(document.getElementById('month').value);
         const day = parseInt(document.getElementById('day').value);
-        const hourInput = document.getElementById('hour').value;
+        const hourInput = document.getElementById('hour').value.trim();
 
-        if(!year || !month || !day) {
+        if(isNaN(year) || isNaN(month) || isNaN(day)) {
             alert("請至少填寫完整的年月日！");
             return;
         }
 
         try {
-            let hour = 12; // 預設使用中午 12 點計算，確保日柱與月柱準確
+            let hour = 12;                // 預設中午 12 點，確保日柱、月柱正常
             let isHourUnknown = true;
 
             if (hourInput !== "") {
-                hour = parseInt(hourInput);
-                isHourUnknown = false;
+                const parsedHour = parseInt(hourInput, 10);
+                if (!isNaN(parsedHour) && parsedHour >= 0 && parsedHour <= 23) {
+                    hour = parsedHour;
+                    isHourUnknown = false;
+                } else {
+                    alert("時辰格式錯誤，將以「未知」處理，使用預設中午12點計算其他柱。");
+                    // 仍保持 isHourUnknown = true，hour=12
+                }
             }
 
-            // 修正：使用正確的 API 函式，並補齊分鐘與秒數 (0, 0)
-            const solar = Solar.fromYmdHms(year, month, day, hour, 0, 0);
+            const solar = Solar.fromYmdH(year, month, day, hour);
             const lunar = solar.getLunar();
 
-            const bazi_year_pillar = lunar.getYearInGanZhiExact();
+            const bazi_year_pillar  = lunar.getYearInGanZhiExact();
             const bazi_month_pillar = lunar.getMonthInGanZhiExact();
-            const bazi_day_pillar = lunar.getDayInGanZhiExact();
-            
-            // 判斷時柱輸出
-            const bazi_hour_pillar = isHourUnknown ? "未知" : lunar.getTimeInGanZhi();
+            const bazi_day_pillar   = lunar.getDayInGanZhi();   // ✅ 修正：日柱沒有 Exact 方法
+            const bazi_hour_pillar  = isHourUnknown ? "未知" : lunar.getTimeInGanZhi();
 
             const bazi_full = `${bazi_year_pillar} ${bazi_month_pillar} ${bazi_day_pillar} ${bazi_hour_pillar}`;
 
             document.getElementById('baziText').innerText = bazi_full;
             document.getElementById('result').style.display = 'block';
         } catch (error) {
-            console.error("詳細錯誤訊息：", error); // 將真實錯誤輸出到開發者工具以便追蹤
             alert("日期計算錯誤，請檢查輸入是否正確。");
         }
     }
