@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>八字排盤（lunar-typescript 版）</title>
-    <!-- 使用 unpkg 引入 lunar-typescript 最新版 -->
+    <title>八字排盤（修正版）</title>
+    <!-- 若 CDN 失效，可自行下載 lunar.min.js 放到同資料夾，並改用本地路徑 -->
     <script src="https://unpkg.com/lunar-typescript@1.6.11/dist/lunar.min.js"></script>
     <style>
         body {
@@ -73,9 +73,9 @@
     <label>日（1-31）：</label>
     <input type="number" id="day" placeholder="15" min="1" max="31">
 
-    <label>時辰：</label>
+    <label>時辰（0-23，23點為次日子時）：</label>
     <select id="hourSelect">
-        <option value="-1">未知（預設午時）</option>
+        <option value="-1">未知（不影響日柱）</option>
         <option value="0">0 時（子時）</option>
         <option value="1">1 時（丑時）</option>
         <option value="2">2 時（丑時）</option>
@@ -112,7 +112,6 @@
 </div>
 
 <script>
-    // 使用 lunar-typescript 全域變數 Lunar, Solar
     function calculateBazi() {
         const y = parseInt(document.getElementById('year').value);
         const m = parseInt(document.getElementById('month').value);
@@ -128,27 +127,58 @@
             return;
         }
 
-        // 處理時辰未知：預設用中午 12 點（確保日柱不受影響，但時柱標記為未知）
-        let hour = 12;
-        let hourUnknown = false;
+        let hour = 12;           // 預設中午
+        let useNextDay = false;  // 是否要用次日計算日柱（給時柱用）
+
         if (hourVal === -1) {
-            hourUnknown = true;
-        } else if (hourVal >= 0 && hourVal <= 23) {
+            // 未知時辰，時柱標記「未知」，保留預設午時計算其他柱
+        } else if (hourVal === 23) {
+            // 23 點屬次日子時 → 日期加一天，時辰視為 0
+            hour = 0;
+            useNextDay = true;
+        } else if (hourVal >= 0 && hourVal <= 22) {
             hour = hourVal;
         } else {
             alert('無效的時辰');
             return;
         }
 
-        // 使用 Solar.fromYmdH 建立西曆對象
-        const solar = Solar.fromYmdH(y, m, d, hour);
+        // 計算日柱用的日期（若子時換日則加一天）
+        let solar;
+        try {
+            if (useNextDay) {
+                // 先構造原日期的次日
+                const tmpSolar = Solar.fromYmd(y, m, d);
+                const next = tmpSolar.next(1); // 取得次日 Solar 物件
+                // 用次日重新建立帶時辰的物件（0點）
+                solar = Solar.fromYmdH(next.getYear(), next.getMonth(), next.getDay(), 0);
+            } else {
+                // 未知或一般時辰
+                solar = Solar.fromYmdH(y, m, d, hour);
+            }
+        } catch (e) {
+            alert('日期不存在，請檢查輸入（如 2/30 不存在）');
+            return;
+        }
+
         const lunar = solar.getLunar();
 
-        // 提取八字各柱（此庫使用精確節氣劃分）
-        const yearPillar  = lunar.getYearInGanZhiExact();
+        // 取得年、月柱（精確節氣）
+        const yearPillar = lunar.getYearInGanZhiExact();
         const monthPillar = lunar.getMonthInGanZhiExact();
-        const dayPillar   = lunar.getDayInGanZhi();
-        const timePillar  = hourUnknown ? '未知' : lunar.getTimeInGanZhi();
+
+        // 日柱（此時 solar 已正確，若是子時換日，日柱就是次日）
+        const dayPillar = lunar.getDayInGanZhi();
+
+        // 時柱
+        let timePillar;
+        if (hourVal === -1) {
+            timePillar = '未知';
+        } else {
+            // 注意：若是子時換日，我們用到的時柱應基於次日日干，
+            // 此處 lunar 已是次日的 lunar，故 getTimeInGanZhi() 正確
+            timePillar = lunar.getTimeInGanZhi();
+        }
 
         const full = `${yearPillar} ${monthPillar} ${dayPillar} ${timePillar}`;
         document.getElementById('baziText').innerText = full;
@@ -157,11 +187,20 @@
 
     function copyBazi() {
         const text = document.getElementById('baziText').innerText;
-        navigator.clipboard.writeText(text).then(() => {
-            alert('已複製，可貼上進行八字解盤。');
-        }).catch(() => {
-            alert('複製失敗，請手動選取。');
-        });
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('已複製，可貼上進行八字解盤。');
+            }).catch(() => {
+                alert('複製失敗，請手動選取。');
+            });
+        } else {
+            // 回退方案：選取文字提示手動複製
+            const range = document.createRange();
+            range.selectNode(document.getElementById('baziText'));
+            window.getSelection().removeAllRanges();
+            window.getSelection().addRange(range);
+            alert('已選取八字，請按 Ctrl+C 複製');
+        }
     }
 </script>
 
